@@ -7,7 +7,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from ...stats import two_proportion_test
+from ...stats import srm_p_value, two_proportion_test
 from .._util import fmt_p, pct, pick, sentence, signed_pct
 from ..base import Draft, Trap, register
 from ..model import Claim, TableSpec, Verdict
@@ -179,7 +179,9 @@ class NoveltyEffect(Trap):
         rows = []
         for day in range(1, 29):
             lift = s["l0"] * np.exp(-(day - 1) / s["tau"]) if planted else s["flat"]
-            nc, nt = int(rng.integers(9_000, 12_001)), int(rng.integers(9_000, 12_001))
+            total = int(rng.integers(18_000, 24_001))
+            nt = int(rng.binomial(total, 0.5))
+            nc = total - nt
             rows.append({
                 "day": day,
                 "control_users": nc,
@@ -225,10 +227,14 @@ class NoveltyEffect(Trap):
         problems = []
         if rel < 0.03 or pval > 0.01:
             problems.append("pooled lift is not clearly significant")
+        if srm_p_value([int(df["control_users"].sum()), int(df["treatment_users"].sum())], [0.5, 0.5]) < 0.05:
+            problems.append("arms are unbalanced (unintended sample ratio mismatch)")
         if planted and (w1 < 0.09 or not -0.03 <= late <= 0.015):
             problems.append("lift does not decay like a novelty effect")
-        if not planted and not (0.025 <= w1 <= 0.10 and 0.025 <= late <= 0.10):
-            problems.append("control lift is not stable over time")
+        if not planted:
+            weekly = [_rel_lift(df[(df["day"] > 7 * w) & (df["day"] <= 7 * (w + 1))])[0] for w in range(4)]
+            if not all(0.025 <= x <= 0.10 for x in weekly):
+                problems.append("control lift is not stable week to week")
         return problems
 
 

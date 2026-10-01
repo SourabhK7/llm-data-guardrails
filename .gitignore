@@ -8,6 +8,8 @@ venv/
 build/
 dist/
 .env
-results/*/raw/
+results/*/run.log
+results/*/raw/*.partial.jsonl
 *.jsonl
 !tests/fixtures/*.jsonl
+!results/*/raw/responses.jsonl

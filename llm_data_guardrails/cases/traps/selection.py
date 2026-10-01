@@ -140,10 +140,10 @@ class SelfSelection(Trap):
     trap_verdicts = frozenset({NS})
     control_verdicts = frozenset({S, INC})
     templates = (
-        "Users who adopted the {feature} retain at {ra} vs {rn} for non-adopters (90-day). That's "
-        "{ratio}x. Rolling the {feature} out to everyone should lift retention a lot.",
-        "The {feature} is a retention driver: 90-day retention is {ra} for adopters and {rn} for "
-        "everyone else. Let's push adoption hard.",
+        "Users who adopted the {feature} retain at {ra} vs {rn} for non-adopters (90-day). The "
+        "{feature} is improving retention.",
+        "The {feature} is helping retention: 90-day retention is {ra} for adopters and {rn} for "
+        "everyone else.",
     )
 
     def scenario(self, rng, domain):
@@ -174,9 +174,7 @@ class SelfSelection(Trap):
         agg = df.groupby("used_feature")[["users", "retained_90d"]].sum()
         ra = agg.loc["yes", "retained_90d"] / agg.loc["yes", "users"]
         rn = agg.loc["no", "retained_90d"] / agg.loc["no", "users"]
-        text = self.templates[s["template"]].format(
-            feature=s["feature"], ra=pct(ra), rn=pct(rn), ratio=f"{ra / rn:.1f}"
-        )
+        text = self.templates[s["template"]].format(feature=s["feature"], ra=pct(ra), rn=pct(rn))
         table = "retention_by_feature_use"
         spec = TableSpec(
             description=f"90-day retention of users active at the {s['feature']} launch, by feature use.",
@@ -231,14 +229,15 @@ class SmallSample(Trap):
     )
     mechanism = (
         "{target} has only {n} {unit_label}, so its {rate} rate has a 95% interval of roughly {lo} to "
-        "{hi}, which includes the {avg} average. The sample is too small to justify moving budget."
+        "{hi}, which includes the {avg} average. The sample is too small to call it a standout source."
     )
     trap_verdicts = frozenset({INC, NS})
     control_verdicts = frozenset({S})
     templates = (
-        "{target} converts at {rate}, {ratio}x our {avg} average. We should move budget toward {target}.",
-        "Big find: {target} is converting at {rate} against a {avg} average across sources. "
-        "Let's double down there.",
+        "{target} converts at {rate}, {ratio}x our {avg} average. It's our best-converting source "
+        "by a wide margin.",
+        "Big find: {target} is converting at {rate} against a {avg} average across sources. It "
+        "clearly converts better than everything else we run.",
     )
 
     def scenario(self, rng, domain):

@@ -142,7 +142,9 @@ class Peeking(Trap):
         rows, cum = [], np.zeros(4, dtype=np.int64)
         stopped = None
         for day in range(1, days + 1):
-            nc, nt = int(rng.integers(1_500, 3_001)), int(rng.integers(1_500, 3_001))
+            total = int(rng.integers(3_000, 6_001))
+            nt = int(rng.binomial(total, 0.5))
+            nc = total - nt
             kc = int(rng.binomial(nc, s["base"]))
             kt = int(rng.binomial(nt, s["base"] * (1 + true_lift)))
             cum += np.array([nc, kc, nt, kt])
@@ -193,6 +195,9 @@ class Peeking(Trap):
         df = tables["cumulative_results"]
         pvals = df["p_value"].to_numpy()
         problems = []
+        last_row = df.iloc[-1]
+        if srm_p_value([int(last_row["control_users"]), int(last_row["treatment_users"])], [0.5, 0.5]) < 0.05:
+            problems.append("arms are unbalanced (unintended sample ratio mismatch)")
         if planted:
             if p["stopped_day"] is None:
                 problems.append("null test never crossed 0.05 in the first 14 days")
@@ -253,7 +258,9 @@ class MultipleComparisons(Trap):
         for country in COUNTRIES:
             base = rng.uniform(0.04, 0.08)
             lift = s["lift"] if (not planted and country == s["target"]) else 0.0
-            nc, nt = int(rng.integers(2_500, 6_001)), int(rng.integers(2_500, 6_001))
+            total = int(rng.integers(5_000, 12_001))
+            nt = int(rng.binomial(total, 0.5))
+            nc = total - nt
             kc, kt = int(rng.binomial(nc, base)), int(rng.binomial(nt, base * (1 + lift)))
             _, pval = two_proportion_test(kc, nc, kt, nt)
             rows.append({"country": country, "control_users": nc, "control_conversions": kc,
@@ -300,6 +307,8 @@ class MultipleComparisons(Trap):
         row = df.set_index("country").loc[p["segment"]]
         others = df[df["country"] != p["segment"]]
         problems = []
+        if srm_p_value([int(tot["control_users"]), int(tot["treatment_users"])], [0.5, 0.5]) < 0.05:
+            problems.append("arms are unbalanced (unintended sample ratio mismatch)")
         if overall_p < 0.05:
             problems.append("overall result is not flat")
         if row["relative_lift"] <= 0:
