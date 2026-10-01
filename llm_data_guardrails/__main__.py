@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import Counter
 
@@ -60,6 +61,61 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 1 if failures else 0
 
 
+def cmd_guard(args: argparse.Namespace) -> int:
+    from .guardrail import Guardrail
+
+    case = build_case(args.trap, args.index, planted=not args.control, split=args.split)
+    report = Guardrail().evaluate_case(case)
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, default=str))
+        return 0
+    print(f"Claim: {case.claim.text}\n")
+    print(report.render())
+    truth = ", ".join(sorted(v.value for v in case.ground_truth.acceptable_verdicts))
+    print(f"\nGround truth: {case.variant}, acceptable verdicts: {truth}")
+    return 0
+
+
+def cmd_guard_eval(args: argparse.Namespace) -> int:
+    from .guardrail import Guardrail
+    from .guardrail.evaluate import evaluate_guardrail, render_markdown
+
+    cases = build_suite(split=args.split, n_per_trap=args.n)
+    table = render_markdown(evaluate_guardrail(cases, Guardrail()))
+    header = (
+        f"Guardrail on suite {SUITE_VERSION}, split `{args.split}`, {args.n} matched pairs per trap "
+        f"({len(cases)} cases).\n\n"
+        "This is a construction check, not a real-world estimate. The checks were designed against "
+        "this trap taxonomy and the generators guarantee clean separation, so near-perfect numbers "
+        "are expected. It verifies that each check implements its logic and that no check misfires "
+        "on another claim kind's controls.\n\n"
+    )
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(header + table + "\n")
+        print(f"Wrote {args.out}", file=sys.stderr)
+    print(header + table)
+    return 0
+
+
+def cmd_checks(args: argparse.Namespace) -> int:
+    from .guardrail import CHECKS
+
+    print("| Check | Applies to claim kinds | Method |")
+    print("|---|---|---|")
+    for check in sorted(CHECKS.values(), key=lambda c: (c.kinds, c.id)):
+        kinds = ", ".join(f"`{k}`" for k in check.kinds)
+        print(f"| `{check.id}` | {kinds} | {check.description} |")
+    return 0
+
+
+def cmd_schema(args: argparse.Namespace) -> int:
+    from .guardrail import claim_json_schema
+
+    print(json.dumps(claim_json_schema(), indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ldg", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -86,6 +142,26 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("verify", help="Generate cases and re-check every trap invariant.")
     p.add_argument("--n", type=int, default=10, help="Matched pairs per trap.")
     p.set_defaults(func=cmd_verify)
+
+    p = sub.add_parser("guard", help="Run the guardrail on one case and print its report.")
+    p.add_argument("trap")
+    p.add_argument("--index", type=int, default=0)
+    p.add_argument("--control", action="store_true")
+    p.add_argument("--split", default="dev", choices=["dev", "heldout"])
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_guard)
+
+    p = sub.add_parser("guard-eval", help="Measure the guardrail's catch and false-alarm rates.")
+    p.add_argument("--n", type=int, default=25, help="Matched pairs per trap.")
+    p.add_argument("--split", default="dev", choices=["dev", "heldout"])
+    p.add_argument("--out", help="Also write the markdown table to this file.")
+    p.set_defaults(func=cmd_guard_eval)
+
+    p = sub.add_parser("checks", help="List guardrail checks as a markdown table.")
+    p.set_defaults(func=cmd_checks)
+
+    p = sub.add_parser("schema", help="Print the JSON Schema for structured claims.")
+    p.set_defaults(func=cmd_schema)
 
     args = parser.parse_args(argv)
     return args.func(args)

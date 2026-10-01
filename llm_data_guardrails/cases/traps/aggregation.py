@@ -167,7 +167,7 @@ class MixShift(Trap):
     templates = (
         "{conv} dropped from {r0} to {r1} week over week. People are converting worse than they "
         "were, so something in the funnel broke. Can we find it?",
-        "Heads up: {conv} fell {r0} to {r1} last week. Visitors to the {product} are just converting "
+        "Heads up: {conv} fell from {r0} to {r1} last week. Visitors to the {product} are just converting "
         "less now. We need a funnel deep-dive.",
     )
 

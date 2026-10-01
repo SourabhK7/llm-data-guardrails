@@ -162,9 +162,9 @@ class DenominatorChange(Trap):
     trap_verdicts = frozenset({NS})
     control_verdicts = frozenset({S, INC})
     templates = (
-        "{conv} jumped from {r0} to {r1} the day {feature} shipped ({date}). Big win for the "
+        "{conv} jumped from {r0} to {r1} the day the {feature} shipped ({date}). Big win for the "
         "{feature} team.",
-        "Since {feature} launched on {date}, {conv} is up from {r0} to {r1}. That's the biggest "
+        "Since the {feature} launched on {date}, {conv} is up from {r0} to {r1}. That's the biggest "
         "single-day improvement we've seen.",
     )
 

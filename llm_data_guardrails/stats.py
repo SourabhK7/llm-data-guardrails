@@ -36,6 +36,47 @@ def two_proportion_test(k1: int, n1: int, k2: int, n2: int) -> tuple[float, floa
     return p2 - p1, two_sided_p((p2 - p1) / se)
 
 
+def stratified_difference(strata: Sequence[tuple[int, int, int, int]]) -> tuple[float, float, float]:
+    """Inverse-variance weighted rate difference (rate2 - rate1) across strata.
+
+    Each stratum is (k1, n1, k2, n2). Returns (difference, standard error, two-sided p).
+    """
+    num = den = 0.0
+    for k1, n1, k2, n2 in strata:
+        if n1 <= 0 or n2 <= 0:
+            continue
+        p1, p2 = k1 / n1, k2 / n2
+        var = p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2
+        if var <= 0:
+            var = 0.25 / n1 + 0.25 / n2
+        num += (p2 - p1) / var
+        den += 1 / var
+    if den == 0:
+        raise ValueError("no usable strata")
+    diff, se = num / den, math.sqrt(1 / den)
+    return diff, se, two_sided_p(diff / se)
+
+
+def log_ratio_test(k1: float, n1: float, k2: float, n2: float) -> tuple[float, float]:
+    """Poisson rate-ratio test of (k2/n2) vs (k1/n1). Returns (ratio, two-sided p)."""
+    k1, k2 = max(k1, 0.5), max(k2, 0.5)
+    ratio = (k2 / n2) / (k1 / n1)
+    return ratio, two_sided_p(math.log(ratio) / math.sqrt(1 / k1 + 1 / k2))
+
+
+def bh_adjust(pvals: Sequence[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values, in the original order."""
+    m = len(pvals)
+    order = sorted(range(m), key=lambda i: pvals[i])
+    adjusted = [0.0] * m
+    running = 1.0
+    for rank in range(m, 0, -1):
+        i = order[rank - 1]
+        running = min(running, pvals[i] * m / rank)
+        adjusted[i] = min(1.0, running)
+    return adjusted
+
+
 def welch_test(x: Sequence[float], y: Sequence[float]) -> tuple[float, float]:
     """Difference in means (y - x) with a normal-approximation Welch test.
 

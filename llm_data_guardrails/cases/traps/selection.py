@@ -140,9 +140,9 @@ class SelfSelection(Trap):
     trap_verdicts = frozenset({NS})
     control_verdicts = frozenset({S, INC})
     templates = (
-        "Users who adopted {feature} retain at {ra} vs {rn} for non-adopters (90-day). That's "
-        "{ratio}x. Rolling {feature} out to everyone should lift retention a lot.",
-        "{feature} is a retention driver: 90-day retention is {ra} for adopters and {rn} for "
+        "Users who adopted the {feature} retain at {ra} vs {rn} for non-adopters (90-day). That's "
+        "{ratio}x. Rolling the {feature} out to everyone should lift retention a lot.",
+        "The {feature} is a retention driver: 90-day retention is {ra} for adopters and {rn} for "
         "everyone else. Let's push adoption hard.",
     )
 
